@@ -5,7 +5,7 @@
 
 ## Инструкция по запуску докерезированного решения
 #### Вы можете скачать готовый образ докера
-Для это загрузите его по следующей ссылке: [](https://yadi.sk/d/hVr5kLqNfMGILA "Yandex Disk")
+Для это загрузите его по следующей ссылке: [https://disk.yandex.ru/d/IOSxJ1SHOQxU5g](https://disk.yandex.ru/d/IOSxJ1SHOQxU5g "Yandex Disk")
 
 Затем необходимо загрузить данный файл образа:
 ```shell
