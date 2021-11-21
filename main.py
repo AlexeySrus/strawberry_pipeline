@@ -160,7 +160,7 @@ def visualize_results(
         x1, y1, x2, y2 = bbox
         color = COLOR_STATE_MAP[src_state]
         if state == 'Здоровый' and draw_healthy_leaves or \
-                leaves_diseases is not None and src_state in leaves_diseases or\
+                leaves_diseases is not None and state in leaves_diseases or\
                 leaves_diseases is None:
             draw_bounding_box_on_image(draw, x1, y1, x2, y2, color, BBOX_WIDTH)
     return image
@@ -227,15 +227,16 @@ def sinlge_layout(url):
                 st.markdown(f'⚠️**Найденные заболевания:**')
                 for dis in diseases_uniq:
                     dis = MAP_LEAVES_STATE[dis]
-                    options[dis] = st.checkbox(dis)
+                    options[dis] = st.checkbox(dis, value=True)
             else:
                 st.write(f'✅ **Растения выглядят здоровыми**')
 
+
+        target_dis = []
+        for dis, opt in options.items():
+            if opt:
+                target_dis.append(dis)
         with container:
-            target_dis = []
-            for dis, opt in options.items():
-                if opt:
-                    target_dis.append(dis)
             st.image(
                 visualize_results(
                     image, json_results, draw_berries, draw_flowers,
