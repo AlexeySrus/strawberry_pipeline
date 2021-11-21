@@ -222,8 +222,7 @@ class CommonPipeline(object):
 
 
 if __name__ == '__main__':
-    img_path = '/home/alexey/programming/squanch_work/strawberry_project/datasets/strawberry/37786E52-F57E-4777-A9E8-D94CBFE89EAD_1_105_c.jpeg'
-    img_path = '/home/alexey/programming/squanch_work/strawberry_project/datasets/strawberry/5F93DE5A-A6B3-4186-A6DF-A77E8E3EEEA8_1_105_c.jpeg'
+    img_path = '37786E52-F57E-4777-A9E8-D94CBFE89EAD_1_105_c.jpeg'
     img = np.array(Image.open(img_path))
     pipeline = CommonPipeline(
         'models_weigts/sw_leaf_diseases.pt',
