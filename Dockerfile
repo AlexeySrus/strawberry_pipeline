@@ -33,4 +33,4 @@ RUN pip3 install -r requirements.txt
 RUN pip3 install streamlit
 RUN pip3 install pyyaml
 
-CMD screen -dmS backand bash -c "uvicorn server:app --reload";streamlit run main.py --server.port=8080
+CMD screen -dmS backand bash -c "uvicorn server:app --host 0.0.0.0 --reload";streamlit run main.py --server.port=8080
