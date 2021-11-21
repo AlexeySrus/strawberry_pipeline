@@ -1,6 +1,8 @@
+import base64
 import yaml
 import colorsys
 
+import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageDraw import ImageDraw
@@ -34,7 +36,12 @@ MAP_GROWTH_PHASE = {
     'berry': 'Развитие ягод',
     'mustaches': 'Появление усов',
 }
-
+COLOR_FLOWER = (0, 10, 200)
+MASK_COLORS = {
+    'berry': (10, 10, 250),
+    'flower': COLOR_FLOWER,
+    'leaf': COLOR_STATE_MAP['healthy']
+}
 
 
 BBOX_WIDTH = 4
@@ -79,14 +86,50 @@ def draw_bounding_box_on_image(
         text_bottom -= (text_height + 2 * margin)
 
 
+def get_mask(b64mask, width, height) -> np.ndarray:
+    mask = np.frombuffer(
+        base64.decodebytes(b64mask.encode('utf-8')), dtype=np.uint8
+    )
+    mask = mask.reshape(height, width)
+    return mask
+
+
+def apply_mask(image: Image, mask: np.ndarray):
+    # berry_mask = np.zeros((mask.shape[0], mask.shape[1], 3))
+    # flower_mask = np.zeros((mask.shape[0], mask.shape[1], 3))
+    # leaves_mask = np.zeros((mask.shape[0], mask.shape[1], 3))
+    # assert 0.0 <= alpha <= 1.0, f'Alpha must be in [0, 1]. Got: {alpha}'
+
+    result_mask = np.zeros((mask.shape[0], mask.shape[1], 3), np.uint8)
+
+    result_mask[mask == 1] = MASK_COLORS['berry']
+    result_mask[mask == 2] = MASK_COLORS['flower']
+    result_mask[mask == 3] = MASK_COLORS['leaf']
+    result_mask = cv2.cvtColor(result_mask, cv2.COLOR_RGB2RGBA)
+    result_mask[mask == 0] = [0, 0, 0, 0]
+
+    image = np.array(image.convert('RGBA'))
+    image = cv2.addWeighted(image, 0.8, result_mask, 0.3, 0.0)
+
+    return Image.fromarray(image).convert('RGB')
+
+
 def visualize_results(
         image: Image,
         json_results,
         draw_berries=True,
         draw_flowers=True,
         draw_healthy_leaves=True,
+        draw_mask=True,
         leaves_diseases=None
 ):
+    if draw_mask:
+        mask = get_mask(
+            json_results['mask']['b64mask'],
+            json_results['mask']['width'],
+            json_results['mask']['height']
+        )
+        image = apply_mask(image, mask)
     draw = ImageDraw(image)
     if draw_berries:
         barries = json_results['berries']
@@ -98,8 +141,9 @@ def visualize_results(
                     np.array(colorsys.hsv_to_rgb(hue, 1, 1)) * 255
                 ).astype(np.int32)
             )
+            ripeness = int(ripeness * 100)
             draw_bounding_box_on_image(
-                draw, x1, y1, x2, y2, color, BBOX_WIDTH, [f'{ripeness:.2f}']
+                draw, x1, y1, x2, y2, color, BBOX_WIDTH, [f'{ripeness}%']
             )
 
     if draw_flowers:
@@ -107,7 +151,7 @@ def visualize_results(
         for bbox in flowers['bboxes']:
             x1, y1, x2, y2 = bbox
             draw_bounding_box_on_image(
-                draw, x1, y1, x2, y2, (0, 10, 200), BBOX_WIDTH
+                draw, x1, y1, x2, y2, COLOR_FLOWER, BBOX_WIDTH
             )
 
     leaves = json_results['leaves']
@@ -116,15 +160,15 @@ def visualize_results(
         x1, y1, x2, y2 = bbox
         color = COLOR_STATE_MAP[src_state]
         if state == 'Здоровый' and draw_healthy_leaves or \
-                leaves_diseases is not None and state in leaves_diseases:
+                leaves_diseases is not None and src_state in leaves_diseases or\
+                leaves_diseases is None:
             draw_bounding_box_on_image(draw, x1, y1, x2, y2, color, BBOX_WIDTH)
     return image
 
 
 def compute_mean_ripeness(json_results):
     berries = json_results['berries']
-    print('BERRIES', berries)
-    if len(berries) == 0:
+    if len(berries['ripeness']) == 0:
         return None
     return np.mean(berries['ripeness'])
 
@@ -137,6 +181,7 @@ def sinlge_layout(url):
     draw_healthy_leaves = st.sidebar.checkbox(
         'Рамки здоровых листьев', value=True
     )
+    draw_mask = st.sidebar.checkbox('Маска сегментации', value=True)
 
     image_uploaded = st.file_uploader(
         'Загрузите изображение',
@@ -167,11 +212,11 @@ def sinlge_layout(url):
             growth_state = MAP_GROWTH_PHASE[json_results['growth_phase']]
             st.write(f'🌱 **Фаза роста:** {growth_state}')
 
-            ripeness = compute_mean_ripeness(json_results)
+            ripeness = int(compute_mean_ripeness(json_results) * 100)
             if ripeness is None:
                 st.write(f'🍓 **Ягод не найдено**')
             else:
-                st.write(f'🍓 **Средняя зрелость плодов:** {ripeness:.2f}')
+                st.write(f'🍓 **Средняя зрелость плодов:** {ripeness}%')
 
 
             diseases = json_results['leaves']['states']
@@ -193,7 +238,7 @@ def sinlge_layout(url):
             st.image(
                 visualize_results(
                     image, json_results, draw_berries, draw_flowers,
-                    draw_healthy_leaves, target_dis
+                    draw_healthy_leaves, draw_mask, target_dis
                 )
             )
 
@@ -213,14 +258,15 @@ def multiple_layout(url):
         )
         response = requests.post(url, data=mp_encoder, headers={
             'Content-Type': mp_encoder.content_type})
-        display_results(Image.open(image), response.json())
+        display_results(Image.open(image), image.name, response.json())
         pb.progress(i / len(image_loader))
 
 
-def display_results(image: Image, json_results):
+def display_results(image: Image, img_fname, json_results):
     col1, col2 = st.columns(2)
     with col1:
         st.subheader('Изображение')
+        st.write(img_fname)
         st.image(visualize_results(image, json_results))
 
     with col2:
@@ -228,11 +274,11 @@ def display_results(image: Image, json_results):
         growth_state = MAP_GROWTH_PHASE[json_results['growth_phase']]
         st.write(f'🌱 **Фаза роста:** {growth_state}')
 
-        ripeness = compute_mean_ripeness(json_results)
+        ripeness = int(compute_mean_ripeness(json_results) * 100)
         if ripeness is None:
             st.write(f'🍓 **Ягод не найдено**')
         else:
-            st.write(f'🍓 **Средняя зрелость плодов:** {ripeness:.2f}')
+            st.write(f'🍓 **Средняя зрелость плодов:** {ripeness}%')
 
         diseases = json_results['leaves']['states']
         diseases_uniq = list(set(diseases).difference({'healthy'}))
