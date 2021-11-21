@@ -29,10 +29,10 @@ MAP_LEAVES_STATE = {
 MAP_GROWTH_PHASE = {
     'seed': 'Начало роста',
     'first_leaves': 'Появления первых листьев',
-    'pre-flower': 'Начало цветения',
+    'pre - flower': 'Начало цветения',
     'flower': 'Цветение',
     'flowers_falling': 'Опадение лепестков',
-    'pre-berry': 'Формирование ягод',
+    'pre - berry': 'Формирование ягод',
     'berry': 'Развитие ягод',
     'mustaches': 'Появление усов',
 }
@@ -212,10 +212,11 @@ def sinlge_layout(url):
             growth_state = MAP_GROWTH_PHASE[json_results['growth_phase']]
             st.write(f'🌱 **Фаза роста:** {growth_state}')
 
-            ripeness = int(compute_mean_ripeness(json_results) * 100)
+            ripeness = compute_mean_ripeness(json_results)
             if ripeness is None:
                 st.write(f'🍓 **Ягод не найдено**')
             else:
+                ripeness = int(ripeness * 100)
                 st.write(f'🍓 **Средняя зрелость плодов:** {ripeness}%')
 
 
@@ -274,10 +275,11 @@ def display_results(image: Image, img_fname, json_results):
         growth_state = MAP_GROWTH_PHASE[json_results['growth_phase']]
         st.write(f'🌱 **Фаза роста:** {growth_state}')
 
-        ripeness = int(compute_mean_ripeness(json_results) * 100)
+        ripeness = compute_mean_ripeness(json_results)
         if ripeness is None:
             st.write(f'🍓 **Ягод не найдено**')
         else:
+            ripeness = int(ripeness * 100)
             st.write(f'🍓 **Средняя зрелость плодов:** {ripeness}%')
 
         diseases = json_results['leaves']['states']
