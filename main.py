@@ -44,6 +44,40 @@ MASK_COLORS = {
 }
 
 
+def get_recommendations(json_results):
+    growth_phase = json_results['growth_phase']
+    leaves = json_results['leaves']
+    recs_all = {
+        1: 'Снизить интенсивность света',
+        2: 'Снизить насыщенность раствора',
+        3: 'Проверить раствор на недостаток калия',
+        4: 'Снизить температуру',
+        5: 'Понизить влажность',
+        6: 'Удалить заражённые пятнистостью листья',
+        7: 'Опрыскать биофунгицидами'
+    }
+    # reasons = []
+    recommendations = []
+    if 'powdery_mildew' in leaves['states']:
+        recommendations.extend([recs_all[5], recs_all[4]])
+    if growth_phase == 'seed' and 'leaf_scorch' in leaves['states']:
+        recommendations.extend([recs_all[2]])
+    if growth_phase == 'seed' and 'angular_leafspot' in leaves['states']:
+        recommendations.extend([recs_all[1]])
+    if ('angular_leafspot' in leaves['states'] or
+            'leaf_scorch' in leaves['states'] or
+            'leaf_spot' in leaves['states']) and\
+            (growth_phase in ['first_leaves', 'pre - flower', 'flower']):
+        recommendations.extend([recs_all[6], recs_all[7], recs_all[3]])
+    if ('angular_leafspot' in leaves['states'] or
+            'leaf_scorch' in leaves['states'] or
+            'leaf_spot' in leaves['states']) and\
+            (growth_phase in ['pre - berry', 'berry', 'flowers_falling']):
+        recommendations.extend([recs_all[6], recs_all[3]])
+    return list(set(recommendations))
+
+
+
 BBOX_WIDTH = 4
 
 
@@ -231,6 +265,14 @@ def sinlge_layout(url):
             else:
                 st.write(f'✅ **Растения выглядят здоровыми**')
 
+            recs = get_recommendations(json_results)
+            if len(recs) > 0:
+                result_recs = ''
+                for rec in recs:
+                    result_recs += f'1. {rec}\n'
+                st.markdown(f'📝️**Рекомендации:**\n\n{result_recs[:-1]}')
+
+
 
         target_dis = []
         for dis, opt in options.items():
@@ -292,6 +334,12 @@ def display_results(image: Image, img_fname, json_results):
             st.markdown(f'⚠️**Найденные заболевания:**\n\n{s[:-1]}')
         else:
             st.write(f'✅ **Растения выглядят здоровыми**')
+        recs = get_recommendations(json_results)
+        if len(recs) > 0:
+            result_recs = ''
+            for rec in recs:
+                result_recs += f'1. {rec}\n'
+            st.markdown(f'📝️**Рекомендации:**\n\n{result_recs[:-1]}')
 
 
 def main(config):
