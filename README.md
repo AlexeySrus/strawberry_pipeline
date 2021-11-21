@@ -12,7 +12,7 @@
 sudo docker load --input rostovnats_strawberry_pipeline.tar
 ```
 
-#### Или же собрать его самостоятельно
+#### Или же собрать его самостоятельно (опционально)
 1. Необходимо склонировать данный репозиторий с помощью следующей команды:
 ```shell
 git clone https://github.com/AlexeySrus/strawberry_pipeline.git
